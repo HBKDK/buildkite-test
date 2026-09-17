@@ -1,9 +1,8 @@
 steps:
   - label: "Hello Buildkite on K8s"
     command:
-      - echo "=== Buildkite agent-stack-k8s 테스트 ==="
-      - echo "Hostname: $$(hostname)"
-      - echo "Date: $$(date)"
-      - echo "K8s Pod에서 실행 중입니다!"
+      - echo "=== Buildkite agent-stack-k8s Test ==="
+      - hostname
+      - echo "Running inside K8s Pod!"
     agents:
-      queue: default
+      queue: kubernetes
