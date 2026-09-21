@@ -9,7 +9,8 @@ steps:
           export PATH="/tmp:$PATH"
         fi
 
-        export BUILD_PVC="bk-build-$BUILDKITE_BUILD_ID"
+        export BUILD_ID="$BUILDKITE_BUILD_ID"
+        export BUILD_PVC="bk-build-$BUILD_ID"
         echo "Build PVC name: $$BUILD_PVC"
 
         cat <<PVCEOF | kubectl apply -f -
