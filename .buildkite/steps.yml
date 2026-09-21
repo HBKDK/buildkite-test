@@ -10,6 +10,9 @@ steps:
       queue: kubernetes
     plugins:
       - kubernetes:
+          metadata:
+            labels:
+              build-pvc-owner: "$BUILD_ID"
           podSpecPatch:
             containers:
               - name: container-0
@@ -33,6 +36,9 @@ steps:
       queue: kubernetes
     plugins:
       - kubernetes:
+          metadata:
+            labels:
+              build-pvc-owner: "$BUILD_ID"
           podSpecPatch:
             containers:
               - name: container-0
@@ -56,6 +62,11 @@ steps:
           chmod +x /tmp/kubectl
           export PATH="/tmp:$PATH"
         fi
+
+        echo "Deleting sibling pods labeled build-pvc-owner=$BUILD_ID ..."
+        kubectl delete pod -n buildkite -l "build-pvc-owner=$BUILD_ID" --ignore-not-found
+
+        echo "Deleting PVC $BUILD_PVC ..."
         kubectl delete pvc $BUILD_PVC -n buildkite --ignore-not-found
     agents:
       queue: kubernetes
