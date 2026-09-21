@@ -1,5 +1,6 @@
 steps:
   - label: "Writer step"
+    key: "writer-step"
     command:
       - "hostname"
       - "echo host=$(hostname) build=$BUILD_PVC > /build-pvc/shared_test.txt"
@@ -21,7 +22,8 @@ steps:
                   claimName: $BUILD_PVC
 
   - label: "Reader step"
-    depends_on: "Writer step"
+    key: "reader-step"
+    depends_on: "writer-step"
     command:
       - "hostname"
       - "echo '--- checking file from previous step ---'"
@@ -46,6 +48,7 @@ steps:
     continue_on_failure: true
 
   - label: "Delete build PVC"
+    key: "delete-pvc"
     command:
       - "kubectl delete pvc $BUILD_PVC -n buildkite --ignore-not-found"
     agents:
