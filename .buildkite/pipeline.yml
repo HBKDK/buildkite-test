@@ -1,8 +1,20 @@
 steps:
-  - label: "Hello Buildkite on K8s"
+  - label: "Workspace mount test - writer"
     command:
-      - echo "=== Buildkite agent-stack-k8s Test ==="
-      - hostname
-      - echo "Running inside K8s Pod!"
+      - "hostname"
+      - "echo host=$(hostname) > /workspace/shared_test.txt"
+      - "date >> /workspace/shared_test.txt"
+      - "ls -la /workspace"
+    agents:
+      queue: kubernetes
+
+  - wait
+
+  - label: "Workspace mount test - reader"
+    command:
+      - "hostname"
+      - "echo '--- previous step file check ---'"
+      - "cat /workspace/shared_test.txt || echo 'FILE NOT FOUND'"
+      - "ls -la /workspace"
     agents:
       queue: kubernetes
