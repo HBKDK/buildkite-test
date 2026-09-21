@@ -50,7 +50,13 @@ steps:
   - label: "Delete build PVC"
     key: "delete-pvc"
     command:
-      - "kubectl delete pvc $BUILD_PVC -n buildkite --ignore-not-found"
+      - |
+        if ! command -v kubectl >/dev/null 2>&1; then
+          curl -sLo /tmp/kubectl "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x /tmp/kubectl
+          export PATH="/tmp:$PATH"
+        fi
+        kubectl delete pvc $BUILD_PVC -n buildkite --ignore-not-found
     agents:
       queue: kubernetes
     plugins:
