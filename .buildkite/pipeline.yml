@@ -1,15 +1,22 @@
 steps:
-  - label: "Setup: create PVC + upload rest of pipeline"
+  - label: "Setup: create PVC + upload steps"
     command:
       - |
-        BUILD_PVC="bk-build-${BUILDKITE_BUILD_ID}"
-        echo "Build PVC name: ${BUILD_PVC}"
+        if ! command -v kubectl >/dev/null 2>&1; then
+          echo "Installing kubectl..."
+          curl -sLo /tmp/kubectl "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x /tmp/kubectl
+          export PATH="/tmp:$PATH"
+        fi
+
+        export BUILD_PVC="bk-build-$BUILDKITE_BUILD_ID"
+        echo "Build PVC name: $$BUILD_PVC"
 
         cat <<PVCEOF | kubectl apply -f -
         apiVersion: v1
         kind: PersistentVolumeClaim
         metadata:
-          name: ${BUILD_PVC}
+          name: $$BUILD_PVC
           namespace: buildkite
         spec:
           accessModes:
@@ -20,66 +27,9 @@ steps:
               storage: 5Gi
         PVCEOF
 
-        kubectl wait --for=jsonpath='{.status.phase}'=Bound "pvc/${BUILD_PVC}" -n buildkite --timeout=60s
+        kubectl wait --for=jsonpath='{.status.phase}'=Bound "pvc/$$BUILD_PVC" -n buildkite --timeout=60s
 
-        cat <<PIPELINEEOF | buildkite-agent pipeline upload
-        steps:
-          - label: "Writer step"
-            command:
-              - "hostname"
-              - "echo host=\$(hostname) build=${BUILD_PVC} > /build-pvc/shared_test.txt"
-              - "date >> /build-pvc/shared_test.txt"
-              - "ls -la /build-pvc"
-            agents:
-              queue: kubernetes
-            plugins:
-              - kubernetes:
-                  podSpecPatch:
-                    containers:
-                      - name: container-0
-                        volumeMounts:
-                          - name: build-pvc
-                            mountPath: /build-pvc
-                    volumes:
-                      - name: build-pvc
-                        persistentVolumeClaim:
-                          claimName: ${BUILD_PVC}
-
-          - label: "Reader step"
-            depends_on: "Writer step"
-            command:
-              - "hostname"
-              - "echo '--- checking file from previous step ---'"
-              - "cat /build-pvc/shared_test.txt || echo 'FILE NOT FOUND'"
-              - "ls -la /build-pvc"
-            agents:
-              queue: kubernetes
-            plugins:
-              - kubernetes:
-                  podSpecPatch:
-                    containers:
-                      - name: container-0
-                        volumeMounts:
-                          - name: build-pvc
-                            mountPath: /build-pvc
-                    volumes:
-                      - name: build-pvc
-                        persistentVolumeClaim:
-                          claimName: ${BUILD_PVC}
-
-          - wait: ~
-            continue_on_failure: true
-
-          - label: "Delete build PVC"
-            command:
-              - "kubectl delete pvc ${BUILD_PVC} -n buildkite --ignore-not-found"
-            agents:
-              queue: kubernetes
-            plugins:
-              - kubernetes:
-                  podSpecPatch:
-                    serviceAccountName: buildkite-workspace-manager
-        PIPELINEEOF
+        buildkite-agent pipeline upload .buildkite/steps.yml
     agents:
       queue: kubernetes
     plugins:
